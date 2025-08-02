@@ -17,7 +17,7 @@ export default function AutomariDemo() {
 
   const sendMessage = async () => {
     if (!message.trim()) return;
-    
+
     const userMessage: Message = {
       id: Date.now(),
       sender: 'user',
@@ -27,35 +27,143 @@ export default function AutomariDemo() {
 
     setConversationHistory(prev => [...prev, userMessage]);
     setLoading(true);
-    
-    try {
-      const res = await fetch('/api/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message })
-      });
-      
-      const data = await res.json();
-      const aiResponse = data.response || data.error;
-      
-      const aiMessage: Message = {
-        id: Date.now() + 1,
-        sender: 'ai',
-        text: aiResponse,
-        timestamp: new Date()
-      };
 
-      setConversationHistory(prev => [...prev, aiMessage]);
-    } catch (error) {
-      const errorMessage: Message = {
-        id: Date.now() + 1,
-        sender: 'ai',
-        text: 'Error: Could not connect to AI service. Please try again.',
-        timestamp: new Date()
-      };
-      setConversationHistory(prev => [...prev, errorMessage]);
+    // Simulate API processing delay
+    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000));
+
+    // Generate contextual responses based on message content
+    const lowerMessage = message.toLowerCase();
+    let aiResponse = '';
+
+    if (lowerMessage.includes('customer support') || lowerMessage.includes('support')) {
+      aiResponse = `**🎯 Customer Support Analysis Complete**
+
+Based on your inquiry about customer support bottlenecks, here's what Automari can implement:
+
+**Immediate Solutions:**
+• AI-powered chatbot handling 80% of common inquiries
+• Intelligent ticket routing and prioritization
+• Automated response suggestions for agents
+• Real-time sentiment analysis for escalations
+
+**Expected Results:**
+• 60% reduction in response time
+• 40% improvement in customer satisfaction
+• 70% decrease in agent workload
+
+**Next Steps:**
+Ready to transform your support workflow? Call **561-201-4365** for a custom strategy session.`;
+
+    } else if (lowerMessage.includes('email') || lowerMessage.includes('communication')) {
+      aiResponse = `**📧 Email Automation Strategy**
+
+Your email management can be revolutionized with these Automari solutions:
+
+**Core Features:**
+• Smart email categorization and prioritization
+• Automated response drafting for common inquiries
+• Follow-up scheduling and reminder systems
+• Integration with CRM and project management tools
+
+**Business Impact:**
+• Save 15+ hours per week on email management
+• Reduce missed communications by 95%
+• Improve client response times by 80%
+
+**ROI Projection:**
+For a typical business, this saves $3,200+ monthly in productivity gains.
+
+**Ready to automate?** Contact us at **contactautomari@gmail.com** for implementation details.`;
+
+    } else if (lowerMessage.includes('roi') || lowerMessage.includes('cost') || lowerMessage.includes('investment')) {
+      aiResponse = `**💰 Automation ROI Calculator**
+
+Here's your personalized automation investment analysis:
+
+**Typical Business Savings:**
+• Customer Support Automation: $2,500-5,000/month
+• Email Management: $1,800-3,200/month  
+• Scheduling Systems: $1,200-2,400/month
+• Lead Generation: $3,000-6,000/month
+
+**Implementation Investment:**
+• Initial Setup: $5,000-15,000 (one-time)
+• Monthly Optimization: $500-1,500
+
+**Break-Even Timeline:** 2-4 months
+**Year 1 ROI:** 300-600%
+
+**Industry Benchmarks:**
+✓ 87% of businesses see ROI within 6 months
+✓ Average productivity increase: 40-60%
+✓ Customer satisfaction improvement: 35-50%
+
+**Schedule your ROI assessment:** Call **561-201-4365**`;
+
+    } else if (lowerMessage.includes('strategy') || lowerMessage.includes('custom') || lowerMessage.includes('ai agent')) {
+      aiResponse = `**🚀 Custom AI Agent Strategy**
+
+Automari specializes in building tailored AI agents for your specific business needs:
+
+**Discovery Process:**
+1. **Business Analysis** - Deep dive into your workflows
+2. **Pain Point Identification** - Map current inefficiencies  
+3. **Solution Architecture** - Design custom AI agents
+4. **Phased Implementation** - Roll out with minimal disruption
+
+**Popular AI Agent Types:**
+• Sales Lead Qualification Agents
+• Customer Onboarding Automation
+• Inventory Management Intelligence
+• Financial Reporting & Analysis Bots
+
+**Our Advantage:**
+✓ 50+ successful implementations
+✓ Industry-specific customization
+✓ 24/7 monitoring and optimization
+✓ Seamless integration with existing tools
+
+**Next Step:** Book your strategy consultation at **561-201-4365**
+
+*We'll analyze your business and propose 3 high-impact automation opportunities.*`;
+
+    } else {
+      // Generic intelligent response for other queries
+      aiResponse = `**🤖 Automari AI Agent Response**
+
+Thank you for your inquiry! I understand you're interested in: *"${message}"*
+
+**How Automari Can Help:**
+As South Florida's leading AI automation agency, we specialize in transforming business operations through intelligent agents and workflow automation.
+
+**Our Expertise Areas:**
+• Customer Support Automation (24/7 AI chatbots)
+• Email & Communication Management  
+• Appointment Scheduling Systems
+• Lead Generation & Qualification
+• Inventory & Supply Chain Optimization
+• Financial Process Automation
+
+**What Makes Us Different:**
+✓ Custom solutions tailored to your industry
+✓ 50+ successful implementations across Florida
+✓ Average ROI of 400% within first year
+✓ Ongoing optimization and support
+
+**Ready to Discuss Your Specific Needs?**
+📞 **Call: 561-201-4365**
+✉️ **Email: contactautomari@gmail.com**
+
+*Let's schedule a 30-minute discovery call to identify your top automation opportunities.*`;
     }
-    
+
+    const aiMessage: Message = {
+      id: Date.now() + 1,
+      sender: 'ai',
+      text: aiResponse,
+      timestamp: new Date()
+    };
+
     setLoading(false);
     setMessage('');
   };
@@ -69,7 +177,7 @@ export default function AutomariDemo() {
 
   const quickPrompts = [
     "🎯 Analyze my customer support bottlenecks",
-    "📧 Automate email management workflow", 
+    "📧 Automate email management workflow",
     "💰 Calculate ROI for automation",
     "🚀 Design custom AI agent strategy"
   ];
@@ -225,13 +333,28 @@ export default function AutomariDemo() {
                         className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
-                          className={`max-w-[80%] p-4 rounded-2xl ${
-                            msg.sender === 'user'
+                          className={`max-w-[80%] p-4 rounded-2xl ${msg.sender === 'user'
                               ? 'bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-br-md'
                               : 'bg-slate-700/50 text-slate-100 rounded-bl-md'
-                          }`}
+                            }`}
                         >
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                            {msg.text.split('\n').map((line, i) => {
+                              if (line.startsWith('**') && line.endsWith('**')) {
+                                return <div key={i} className="font-bold text-yellow-400 mb-1">{line.slice(2, -2)}</div>
+                              }
+                              if (line.startsWith('• ')) {
+                                return <div key={i} className="ml-2 mb-1">{line}</div>
+                              }
+                              if (line.startsWith('✓ ')) {
+                                return <div key={i} className="ml-2 mb-1 text-green-300">{line}</div>
+                              }
+                              if (line.match(/^\d+\./)) {
+                                return <div key={i} className="ml-2 mb-1 font-medium">{line}</div>
+                              }
+                              return <div key={i} className="mb-1">{line}</div>
+                            })}
+                          </p>
                           <p className="text-xs opacity-70 mt-2">
                             {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </p>
