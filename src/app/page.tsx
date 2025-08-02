@@ -18,7 +18,7 @@ export default function AutomariDemo() {
   const sendMessage = async () => {
     if (!message.trim()) return;
     
-    const userMessage = {
+    const userMessage: Message = {
       id: Date.now(),
       sender: 'user',
       text: message.trim(),
@@ -38,7 +38,7 @@ export default function AutomariDemo() {
       const data = await res.json();
       const aiResponse = data.response || data.error;
       
-      const aiMessage = {
+      const aiMessage: Message = {
         id: Date.now() + 1,
         sender: 'ai',
         text: aiResponse,
@@ -47,7 +47,7 @@ export default function AutomariDemo() {
 
       setConversationHistory(prev => [...prev, aiMessage]);
     } catch (error) {
-      const errorMessage = {
+      const errorMessage: Message = {
         id: Date.now() + 1,
         sender: 'ai',
         text: 'Error: Could not connect to AI service. Please try again.',
@@ -60,7 +60,7 @@ export default function AutomariDemo() {
     setMessage('');
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -74,7 +74,7 @@ export default function AutomariDemo() {
     "🚀 Design custom AI agent strategy"
   ];
 
-  const handleQuickPrompt = (prompt) => {
+  const handleQuickPrompt = (prompt: string) => {
     setMessage(prompt);
   };
 
