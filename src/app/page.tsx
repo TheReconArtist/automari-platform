@@ -3,9 +3,16 @@
 import { useState } from 'react';
 import Image from 'next/image';
 
+interface Message {
+  id: number;
+  sender: string;
+  text: string;
+  timestamp: Date;
+}
+
 export default function AutomariDemo() {
   const [message, setMessage] = useState('');
-  const [conversationHistory, setConversationHistory] = useState([]);
+  const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
 
   const sendMessage = async () => {
