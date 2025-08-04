@@ -10,10 +10,193 @@ interface Message {
   timestamp: Date;
 }
 
+interface LeadData {
+  name: string;
+  email: string;
+  company: string;
+  message: string;
+  phone?: string;
+  source: string;
+}
+
 export default function AutomariDemo() {
   const [message, setMessage] = useState('');
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [leadData, setLeadData] = useState<LeadData>({
+    name: '',
+    email: '',
+    company: '',
+    message: '',
+    phone: '',
+    source: 'demo'
+  });
+
+  const simulateLeadProcessing = async (lead: LeadData) => {
+    // Simulate AI qualification based on message content
+    const lowerMessage = lead.message.toLowerCase();
+    let score = 30; // Base score
+
+    const hasUrgentKeywords = lowerMessage.includes('urgent') || lowerMessage.includes('asap') || lowerMessage.includes('immediately');
+    const hasBudgetSignals = lowerMessage.includes('budget') || lowerMessage.includes('investment') || lowerMessage.includes('cost');
+    const hasCompanyIndicators = lead.company && lead.company.length > 0;
+    const hasDetailedMessage = lead.message.length > 50;
+
+    if (hasUrgentKeywords) score += 25;
+    if (hasBudgetSignals) score += 20;
+    if (hasCompanyIndicators) score += 15;
+    if (hasDetailedMessage) score += 10;
+
+    const qualified = score >= 70;
+    const leadId = `LEAD-${Date.now()}`;
+    const intent = score >= 80 ? 'high' : score >= 60 ? 'medium' : 'low';
+    const urgency = hasUrgentKeywords ? 'immediate' : 'soon';
+    const fit = score >= 80 ? 'excellent' : score >= 60 ? 'good' : 'poor';
+
+    return {
+      leadId,
+      qualified,
+      score,
+      intent,
+      urgency,
+      fit,
+      reasoning: qualified ? 'Lead shows strong buying signals and engagement' : 'Lead requires nurturing before sales engagement',
+      nextAction: qualified ? 'Schedule discovery call within 24 hours' : 'Add to nurturing campaign'
+    };
+  };
+
+  // Replace your existing processLead function with this one
+
+  const processLead = async (lead: LeadData) => {
+    setLoading(true);
+
+    // Add processing message
+    const processingMessage: Message = {
+      id: Date.now(),
+      sender: 'ai',
+      text: `**🔄 Processing Lead Through n8n Workflow**
+
+Sending lead data for: **${lead.name}** from **${lead.company}**
+
+Live n8n workflow processing:
+• Connecting to Lead Generation Bot webhook
+• Running AI qualification through OpenAI
+• Triggering automated actions
+• Updating Google Sheets, Gmail, and Slack`,
+      timestamp: new Date()
+    };
+
+    setConversationHistory(prev => [...prev, processingMessage]);
+
+    try {
+      // Call your actual n8n workflow via API
+      const response = await fetch('/api/lead-generation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(lead),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const resultMessage: Message = {
+          id: Date.now() + 1,
+          sender: 'ai',
+          text: `**✅ Lead Processed Successfully - ${result.leadId}**
+
+**LIVE n8n Workflow Complete!**
+
+**Lead Information:**
+👤 **Name:** ${lead.name}
+🏢 **Company:** ${lead.company}
+📧 **Email:** ${lead.email}
+📞 **Phone:** ${lead.phone || 'Not provided'}
+
+**AI Qualification Results:**
+🎯 **Score:** ${result.score || 'Calculated'}/100
+📊 **Status:** ${result.qualified ? '✅ QUALIFIED LEAD' : '⚠️ NURTURING REQUIRED'}
+
+**Real Actions Completed:**
+${result.qualified ? `
+✅ Lead saved to Google Sheets (Qualified Leads tab)
+📧 Priority confirmation email sent to ${lead.email}
+💬 Sales team notified via Slack - HIGH PRIORITY ALERT
+📋 CRM updated with qualification data
+🎯 **Next Action:** ${result.nextSteps}
+
+**Response Time:** Sales team will contact within 24 hours
+` : `
+📊 Lead logged to nurturing database (Google Sheets)
+📧 Thank you email sent to ${lead.email}
+📋 Added to automated nurturing sequence
+🎯 **Next Action:** ${result.nextSteps}
+
+**Follow-up Timeline:** 3-5 business days via nurturing campaign
+`}
+
+**Workflow Confirmation:** ${result.message}
+
+**Direct Contact:** 561-201-4365 for immediate assistance`,
+          timestamp: new Date()
+        };
+
+        setConversationHistory(prev => [...prev, resultMessage]);
+
+      } else {
+        // Handle API error
+        throw new Error(result.error || 'n8n workflow processing failed');
+      }
+
+    } catch (error) {
+      console.error('Lead processing error:', error);
+
+      const errorMessage: Message = {
+        id: Date.now() + 1,
+        sender: 'ai',
+        text: `**❌ n8n Workflow Connection Error**
+
+There was an issue connecting to our live n8n workflow:
+
+**Error Details:** ${error.message}
+
+**Troubleshooting:**
+• Check n8n webhook is running and accessible
+• Verify environment variables are configured
+• Ensure n8n workflow is active
+
+**For immediate assistance:**
+📞 **Call:** 561-201-4365
+✉️ **Email:** contactautomari@gmail.com
+
+*We'll process your lead manually and get back to you within 1 hour.*
+
+**Your Lead Info:**
+• Name: ${lead.name}
+• Email: ${lead.email}
+• Company: ${lead.company}
+• Message: ${lead.message}`,
+        timestamp: new Date()
+      };
+
+      setConversationHistory(prev => [...prev, errorMessage]);
+    }
+
+    setLoading(false);
+    setShowLeadForm(false);
+
+    // Reset form
+    setLeadData({
+      name: '',
+      email: '',
+      company: '',
+      message: '',
+      phone: '',
+      source: 'demo'
+    });
+  };
 
   const sendMessage = async () => {
     if (!message.trim()) return;
@@ -28,28 +211,79 @@ export default function AutomariDemo() {
     setConversationHistory(prev => [...prev, userMessage]);
     setLoading(true);
 
-    // Simulate AI processing delay
+    // Simulate API processing delay
     await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000));
 
     // Generate contextual responses based on message content
     const lowerMessage = message.toLowerCase();
     let aiResponse = '';
 
-    if (lowerMessage.includes('customer support') || lowerMessage.includes('support')) {
+    if (lowerMessage.includes('lead generation') || lowerMessage.includes('leads') || lowerMessage.includes('lead gen')) {
+      aiResponse = `**🎯 Lead Generation Bot Activated**
+
+I see you're interested in lead generation! Our AI-powered Lead Generation Bot is one of our most powerful automation tools.
+
+**What It Does:**
+• Captures leads from your website automatically
+• Uses AI to qualify and score each lead (0-100 scale)  
+• Routes qualified leads (70+ score) directly to sales
+• Sends unqualified leads to nurturing campaigns
+• Integrates with Google Sheets, Gmail, and Slack
+
+**AI Qualification Criteria:**
+✓ Analyzes message for buying signals
+✓ Detects urgency indicators ("urgent", "ASAP", "immediately")
+✓ Identifies budget mentions and company size
+✓ Scores intent level and company fit
+
+**Business Impact:**
+• 60% faster lead response time
+• 40% improvement in lead quality
+• 80% reduction in manual lead processing
+• 300% increase in sales team efficiency
+
+**Live Demo Available:** Want to see it in action? I can process a sample lead right now!
+
+**Ready to test it?** Call **561-201-4365** or submit a lead below to see the AI qualification in real-time.`;
+
+    } else if (lowerMessage.includes('submit lead') || lowerMessage.includes('test lead') || lowerMessage.includes('demo lead') || lowerMessage.includes('test the lead qualification')) {
+      setShowLeadForm(true);
+      aiResponse = `**📝 Lead Submission Form Activated**
+
+Perfect! I've opened our lead capture form below. This will demonstrate our complete lead generation workflow:
+
+**What Happens Next:**
+1. **Lead Capture** - Your information is collected
+2. **AI Analysis** - Our system analyzes your submission
+3. **Smart Scoring** - AI assigns a qualification score (0-100)
+4. **Automated Routing** - Qualified leads go to sales, others to nurturing
+5. **Multi-Channel Updates** - Updates Google Sheets, sends emails, notifies Slack
+
+**Scoring Factors:**
+• Message urgency and detail level
+• Company information provided
+• Buying signal detection
+• Contact completeness
+
+Fill out the form below to see our AI qualification system in action! The demo will show you exactly how your leads would be processed automatically.
+
+**💡 Pro Tip:** Try the sample leads on the left to see different AI scoring scenarios!`;
+
+    } else if (lowerMessage.includes('customer support') || lowerMessage.includes('support')) {
       aiResponse = `**🎯 Customer Support Analysis Complete**
 
 Based on your inquiry about customer support bottlenecks, here's what Automari can implement:
 
 **Immediate Solutions:**
-- AI-powered chatbot handling 80% of common inquiries
-- Intelligent ticket routing and prioritization
-- Automated response suggestions for agents
-- Real-time sentiment analysis for escalations
+• AI-powered chatbot handling 80% of common inquiries
+• Intelligent ticket routing and prioritization
+• Automated response suggestions for agents
+• Real-time sentiment analysis for escalations
 
 **Expected Results:**
-- 60% reduction in response time
-- 40% improvement in customer satisfaction
-- 70% decrease in agent workload
+• 60% reduction in response time
+• 40% improvement in customer satisfaction
+• 70% decrease in agent workload
 
 **Next Steps:**
 Ready to transform your support workflow? Call **561-201-4365** for a custom strategy session.`;
@@ -60,15 +294,15 @@ Ready to transform your support workflow? Call **561-201-4365** for a custom str
 Your email management can be revolutionized with these Automari solutions:
 
 **Core Features:**
-- Smart email categorization and prioritization
-- Automated response drafting for common inquiries
-- Follow-up scheduling and reminder systems
-- Integration with CRM and project management tools
+• Smart email categorization and prioritization
+• Automated response drafting for common inquiries
+• Follow-up scheduling and reminder systems
+• Integration with CRM and project management tools
 
 **Business Impact:**
-- Save 15+ hours per week on email management
-- Reduce missed communications by 95%
-- Improve client response times by 80%
+• Save 15+ hours per week on email management
+• Reduce missed communications by 95%
+• Improve client response times by 80%
 
 **ROI Projection:**
 For a typical business, this saves $3,200+ monthly in productivity gains.
@@ -81,14 +315,14 @@ For a typical business, this saves $3,200+ monthly in productivity gains.
 Here's your personalized automation investment analysis:
 
 **Typical Business Savings:**
-- Customer Support Automation: $2,500-5,000/month
-- Email Management: $1,800-3,200/month  
-- Scheduling Systems: $1,200-2,400/month
-- Lead Generation: $3,000-6,000/month
+• Customer Support Automation: $2,500-5,000/month
+• Email Management: $1,800-3,200/month  
+• Scheduling Systems: $1,200-2,400/month
+• Lead Generation: $3,000-6,000/month
 
 **Implementation Investment:**
-- Initial Setup: $5,000-15,000 (one-time)
-- Monthly Optimization: $500-1,500
+• Initial Setup: $5,000-15,000 (one-time)
+• Monthly Optimization: $500-1,500
 
 **Break-Even Timeline:** 2-4 months
 **Year 1 ROI:** 300-600%
@@ -112,10 +346,10 @@ Automari specializes in building tailored AI agents for your specific business n
 4. **Phased Implementation** - Roll out with minimal disruption
 
 **Popular AI Agent Types:**
-- Sales Lead Qualification Agents
-- Customer Onboarding Automation
-- Inventory Management Intelligence
-- Financial Reporting & Analysis Bots
+• Sales Lead Qualification Agents
+• Customer Onboarding Automation
+• Inventory Management Intelligence
+• Financial Reporting & Analysis Bots
 
 **Our Advantage:**
 ✓ 50+ successful implementations
@@ -128,6 +362,7 @@ Automari specializes in building tailored AI agents for your specific business n
 *We'll analyze your business and propose 3 high-impact automation opportunities.*`;
 
     } else {
+      // Generic intelligent response for other queries
       aiResponse = `**🤖 Automari AI Agent Response**
 
 Thank you for your inquiry! I understand you're interested in: *"${message}"*
@@ -136,12 +371,12 @@ Thank you for your inquiry! I understand you're interested in: *"${message}"*
 As South Florida's leading AI automation agency, we specialize in transforming business operations through intelligent agents and workflow automation.
 
 **Our Expertise Areas:**
-- Customer Support Automation (24/7 AI chatbots)
-- Email & Communication Management  
-- Appointment Scheduling Systems
-- Lead Generation & Qualification
-- Inventory & Supply Chain Optimization
-- Financial Process Automation
+• **Lead Generation Automation** (AI-powered qualification & routing)
+• Customer Support Automation (24/7 AI chatbots)
+• Email & Communication Management  
+• Appointment Scheduling Systems
+• Inventory & Supply Chain Optimization
+• Financial Process Automation
 
 **What Makes Us Different:**
 ✓ Custom solutions tailored to your industry
@@ -163,9 +398,9 @@ As South Florida's leading AI automation agency, we specialize in transforming b
       timestamp: new Date()
     };
 
-    setConversationHistory(prev => [...prev, aiMessage]);
     setLoading(false);
     setMessage('');
+    setConversationHistory(prev => [...prev, aiMessage]);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -176,8 +411,8 @@ As South Florida's leading AI automation agency, we specialize in transforming b
   };
 
   const quickPrompts = [
-    "🎯 Analyze my customer support bottlenecks",
-    "📧 Automate email management workflow",
+    "🎯 Show me lead generation automation",
+    "📝 Test the lead qualification system",
     "💰 Calculate ROI for automation",
     "🚀 Design custom AI agent strategy"
   ];
@@ -186,21 +421,34 @@ As South Florida's leading AI automation agency, we specialize in transforming b
     setMessage(prompt);
   };
 
-  const formatMessage = (text: string) => {
-    return text.split('\n').map((line, i) => {
-      if (line.startsWith('**') && line.endsWith('**')) {
-        return <div key={i} className="font-bold text-yellow-400 mb-1">{line.slice(2, -2)}</div>
-      }
-      if (line.startsWith('• ')) {
-        return <div key={i} className="ml-2 mb-1">{line}</div>
-      }
-      if (line.startsWith('✓ ')) {
-        return <div key={i} className="ml-2 mb-1 text-green-300">{line}</div>
-      }
-      if (line.match(/^\d+\./)) {
-        return <div key={i} className="ml-2 mb-1 font-medium">{line}</div>
-      }
-      return <div key={i} className="mb-1">{line}</div>
+  const sampleLeads = [
+    {
+      name: "Sarah Johnson",
+      email: "sarah@techcorp.com",
+      company: "TechCorp Solutions",
+      message: "We need an urgent solution for lead generation. Our current system isn't working and we have budget allocated for this quarter.",
+      phone: "555-0123"
+    },
+    {
+      name: "Mike Chen",
+      email: "mike@startup.io",
+      company: "StartupXYZ",
+      message: "Looking into lead gen tools for our growing team.",
+      phone: "555-0456"
+    },
+    {
+      name: "Jennifer Davis",
+      email: "j.davis@enterprise.com",
+      company: "Enterprise Corp",
+      message: "Our sales team needs better lead qualification. We're evaluating several solutions and have a significant budget for the right platform. This is a high priority project that needs to be implemented ASAP.",
+      phone: "555-0789"
+    }
+  ];
+
+  const fillSampleLead = (sample: any) => {
+    setLeadData({
+      ...sample,
+      source: 'demo'
     });
   };
 
@@ -212,14 +460,9 @@ As South Florida's leading AI automation agency, we specialize in transforming b
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
               <div className="relative w-10 h-10">
-                <Image
-                  src="/automari-logo.png"
-                  alt="Automari Logo"
-                  width={40}
-                  height={40}
-                  className="object-contain rounded-lg"
-                  priority
-                />
+                <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-blue-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold">A</span>
+                </div>
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-red-400 via-slate-200 to-blue-400 bg-clip-text text-transparent">
                 Automari
@@ -309,6 +552,29 @@ As South Florida's leading AI automation agency, we specialize in transforming b
                     </button>
                   ))}
                 </div>
+
+                {/* Sample Leads */}
+                {showLeadForm && (
+                  <div className="mt-6 pt-6 border-t border-slate-600/30">
+                    <h4 className="text-sm font-semibold text-white mb-3 flex items-center">
+                      <span className="text-yellow-400 mr-2">⚡</span>
+                      Quick Test Leads
+                    </h4>
+                    <div className="space-y-2">
+                      {sampleLeads.map((sample, index) => (
+                        <button
+                          key={index}
+                          onClick={() => fillSampleLead(sample)}
+                          className="w-full text-left p-2 rounded-lg bg-slate-700/30 hover:bg-slate-600/50 transition-colors text-xs"
+                        >
+                          <div className="font-medium text-white">{sample.name}</div>
+                          <div className="text-slate-300">{sample.company}</div>
+                          <div className="text-slate-400 truncate">{sample.message.substring(0, 30)}...</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -352,13 +618,27 @@ As South Florida's leading AI automation agency, we specialize in transforming b
                       >
                         <div
                           className={`max-w-[80%] p-4 rounded-2xl ${msg.sender === 'user'
-                              ? 'bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-br-md'
-                              : 'bg-slate-700/50 text-slate-100 rounded-bl-md'
+                            ? 'bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-br-md'
+                            : 'bg-slate-700/50 text-slate-100 rounded-bl-md'
                             }`}
                         >
-                          <div className="text-sm leading-relaxed">
-                            {formatMessage(msg.text)}
-                          </div>
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                            {msg.text.split('\n').map((line, i) => {
+                              if (line.startsWith('**') && line.endsWith('**')) {
+                                return <div key={i} className="font-bold text-yellow-400 mb-1">{line.slice(2, -2)}</div>
+                              }
+                              if (line.startsWith('• ')) {
+                                return <div key={i} className="ml-2 mb-1">{line}</div>
+                              }
+                              if (line.startsWith('✓ ')) {
+                                return <div key={i} className="ml-2 mb-1 text-green-300">{line}</div>
+                              }
+                              if (line.match(/^\d+\./)) {
+                                return <div key={i} className="ml-2 mb-1 font-medium">{line}</div>
+                              }
+                              return <div key={i} className="mb-1">{line}</div>
+                            })}
+                          </p>
                           <p className="text-xs opacity-70 mt-2">
                             {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </p>
@@ -382,6 +662,72 @@ As South Florida's leading AI automation agency, we specialize in transforming b
                     </div>
                   )}
                 </div>
+
+                {/* Lead Form */}
+                {showLeadForm && (
+                  <div className="p-4 border-t border-slate-600/50 bg-slate-900/50">
+                    <div className="bg-slate-800/50 rounded-xl p-4 mb-4">
+                      <h4 className="text-sm font-semibold text-white mb-3 flex items-center">
+                        <span className="text-blue-400 mr-2">📝</span>
+                        Lead Generation Demo Form
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <input
+                          type="text"
+                          placeholder="Full Name *"
+                          value={leadData.name}
+                          onChange={(e) => setLeadData({ ...leadData, name: e.target.value })}
+                          className="px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-red-500/50"
+                        />
+                        <input
+                          type="email"
+                          placeholder="Email *"
+                          value={leadData.email}
+                          onChange={(e) => setLeadData({ ...leadData, email: e.target.value })}
+                          className="px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-red-500/50"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <input
+                          type="text"
+                          placeholder="Company"
+                          value={leadData.company}
+                          onChange={(e) => setLeadData({ ...leadData, company: e.target.value })}
+                          className="px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-red-500/50"
+                        />
+                        <input
+                          type="tel"
+                          placeholder="Phone"
+                          value={leadData.phone}
+                          onChange={(e) => setLeadData({ ...leadData, phone: e.target.value })}
+                          className="px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-red-500/50"
+                        />
+                      </div>
+                      <textarea
+                        placeholder="Tell us about your needs (be specific for higher AI score) *"
+                        value={leadData.message}
+                        onChange={(e) => setLeadData({ ...leadData, message: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 text-sm focus:outline-none focus:border-red-500/50 resize-none"
+                        rows={3}
+                      />
+                      <div className="flex justify-between items-center mt-3">
+                        <button
+                          onClick={() => setShowLeadForm(false)}
+                          className="text-xs text-slate-400 hover:text-slate-300"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => processLead(leadData)}
+                          disabled={!leadData.name || !leadData.email || !leadData.message || loading}
+                          className="bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-700 hover:to-blue-700 disabled:opacity-50 px-4 py-2 rounded-lg text-white text-sm font-medium transition-all"
+                        >
+                          🎯 Process Lead
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Input */}
                 <div className="p-4 border-t border-slate-600/50 bg-slate-800/50">
